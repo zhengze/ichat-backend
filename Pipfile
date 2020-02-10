@@ -1,0 +1,27 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+pytest = "*"
+websocket-client = "*"
+
+[packages]
+flask = "*"
+flask-restful = "*"
+flask-script = "*"
+flask-cors = "*"
+flask-mysql = "*"
+flask-sqlalchemy = "*"
+flask-socketio = "*"
+python-dotenv = "*"
+flask-migrate = "*"
+passlib = "*"
+flask-jwt-extended = "*"
+pymysql = "*"
+gevent-websocket = "*"
+
+[requires]
+python_version = "3.6"
