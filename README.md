@@ -35,6 +35,8 @@ ichat
 
 ### .env
 
+### config.py
+
 ### 数据库创建
 
 ## python依赖安装
