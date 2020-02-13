@@ -18,10 +18,8 @@ flask-sqlalchemy = "*"
 flask-socketio = "*"
 python-dotenv = "*"
 flask-migrate = "*"
-passlib = "*"
 flask-jwt-extended = "*"
 pymysql = "*"
-gevent-websocket = "*"
 
 [requires]
 python_version = "3.6"
