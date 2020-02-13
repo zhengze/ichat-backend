@@ -11,7 +11,10 @@ class UserGroup(db.Model):
     __tablename__ = 'user_group'
 
     id = db.Column(db.Integer, primary_key=True)
-    group_name = db.Column(db.String(80), unique=True)
+    gname = db.Column(db.String(80), unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship('User',
+                           backref=db.backref('own_groups', lazy='dynamic'))
     create_time = db.Column(db.DateTime, default=datetime.now)
     update_time = db.Column(
         db.DateTime,
@@ -19,7 +22,31 @@ class UserGroup(db.Model):
         onupdate=datetime.now)
 
     def __repr__(self):
-        return '<UserGroup %r>' % self.group_name
+        return '<UserGroup %r>' % self.gname
+
+
+class UserGroupMember(db.Model):
+    __tablename__ = 'user_group_member'
+
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('user_group.id'))
+    group = db.relationship(
+        'UserGroup',
+        backref=db.backref(
+            'joined_groups',
+            lazy='dynamic'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship('User',
+                           backref=db.backref('members', lazy='dynamic'))
+    isdelete = db.Column(db.Boolean, default=False)
+    create_time = db.Column(db.DateTime, default=datetime.now)
+    update_time = db.Column(
+        db.DateTime,
+        default=datetime.now,
+        onupdate=datetime.now)
+
+    def __repr__(self):
+        return '<UserGroupMember %r>' % self.id
 
 
 class User(db.Model):
@@ -29,10 +56,6 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True)
     password = db.Column(db.Unicode(256), nullable=False)
     role = db.Column(db.SmallInteger, default=ROLE_USER)
-    contact_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    group_id = db.Column(db.Integer, db.ForeignKey('user_group.id'))
-    user_group = db.relationship('UserGroup',
-                                 backref=db.backref('users', lazy='dynamic'))
     create_time = db.Column(db.DateTime, default=datetime.now)
     update_time = db.Column(
         db.DateTime,
@@ -55,6 +78,35 @@ class User(db.Model):
         return '<User %r>' % self.username
 
 
+class Friend(db.Model):
+    __tablename__ = "friend"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship(
+        'User',
+        backref=db.backref(
+            'users',
+            lazy='dynamic'),
+        foreign_keys=[user_id])
+    friend = db.relationship(
+        'User',
+        backref=db.backref(
+            'friends',
+            lazy='dynamic'),
+        foreign_keys=[friend_id])
+    isdelete = db.Column(db.Boolean, default=False)
+    create_time = db.Column(db.DateTime, default=datetime.now)
+    update_time = db.Column(
+        db.DateTime,
+        default=datetime.now,
+        onupdate=datetime.now)
+
+    def __repr__(self):
+        return '<Friend %r>' % (self.id)
+
+
 class UserChatLog(db.Model):
     __tablename__ = "user_chat_log"
 
@@ -64,13 +116,13 @@ class UserChatLog(db.Model):
     from_user = db.relationship(
         'User',
         backref=db.backref(
-            'fromchatlog',
+            'fuserchatlog',
             lazy='dynamic'),
         foreign_keys=[from_user_id])
     to_user = db.relationship(
         'User',
         backref=db.backref(
-            'tochatlog',
+            'tuserchatlog',
             lazy='dynamic'),
         foreign_keys=[to_user_id])
     message = db.Column(db.String(128))
@@ -80,6 +132,10 @@ class UserChatLog(db.Model):
         db.DateTime,
         default=datetime.now,
         onupdate=datetime.now)
+
+    __mapper_args__ = {
+        'order_by': create_time.desc()
+    }
 
     def __init__(self, from_user, to_user, message):
         self.from_user = from_user
@@ -94,15 +150,27 @@ class UserGroupChatLog(db.Model):
     __tablename__ = "user_group_chat_log"
 
     id = db.Column(db.Integer, primary_key=True)
-    from_group = db.Column(db.Integer, db.ForeignKey('user_group.id'))
-    to_user = db.Column(db.Integer, db.ForeignKey('user.id'))
+    group_id = db.Column(db.Integer, db.ForeignKey('user_group.id'))
+    group = db.relationship(
+        'UserGroup', backref=db.backref(
+            'chatlogs', lazy='dynamic'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship(
+        'User',
+        backref=db.backref(
+            'groupchatlog',
+            lazy='dynamic'))
     message = db.Column(db.String(128))
-    has_read = db.Column(db.Boolean, default=False)
+    isread = db.Column(db.Boolean, default=False)
     create_time = db.Column(db.DateTime, default=datetime.now)
     update_time = db.Column(
         db.DateTime,
         default=datetime.now,
         onupdate=datetime.now)
+
+    __mapper_args__ = {
+        'order_by': create_time.desc()
+    }
 
     def __repr__(self):
         return '<UserGroupChatLog %r>' % self.message
