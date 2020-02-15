@@ -10,7 +10,7 @@ from flask_jwt_extended import (
 )
 import json
 from .database import db
-from .models import User, UserGroup, UserChatLog, UserGroupChatLog, Friend
+from .models import User, UserGroup, UserChatLog, UserGroupChatLog, Friend, UserGroupMember
 from .utils import datetime_format, datetime2timestamp
 
 
@@ -76,17 +76,43 @@ class FriendAPI(Resource):
     def get(self):
         current_user = get_jwt_identity()
         user = User.query.filter_by(id=current_user).first()
-        friends = Friend.query.filter_by(user=user)
+        friends = Friend.query.filter(
+            (Friend.user == user) | (
+                Friend.friend == user))
         response_data = []
         for friend in friends:
-            response_data.append({
-                'fname': friend.friend.username
-            })
+            if friend.user.id == current_user:
+                data = {'fname': friend.friend.username}
+            else:
+                data = {'fname': friend.user.username}
+            response_data.append(data)
         return {'friends': response_data}, 200
 
     @jwt_required
     def post(self):
-        pass
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('username',
+                             type=str,
+                             required=True,
+                             help="This field cannot be blank."
+                             )
+        args = _parser.parse_args()
+        current_user = get_jwt_identity()
+        user1 = User.query.filter_by(id=current_user).first()
+        user2 = User.query.filter_by(username=args['username']).first()
+
+        friend = Friend()
+        if user1.id < user2.id:
+            friend.user = user1
+            friend.friend = user2
+        else:
+            friend.user = user2
+            friend.friend = user1
+        db.session.add(friend)
+        db.session.commit()
+
+        return {'message': 'user %s add %s' % (
+            user1.username, user2.username)}, 201
 
 
 class UserGroupAPI(Resource):
@@ -123,10 +149,47 @@ class UserGroupAPI(Resource):
         return {'message': 'create group %s' % user_group.gname}, 201
 
 
+class UserGroupMemberAPI(Resource):
+    @jwt_required
+    def get(self):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(id=current_user).first()
+        joined_groups = UserGroupMember.query.filter_by(user=user)
+        response_data = []
+        for joined_group in joined_groups:
+            response_data.append({
+                'gname': joined_group.group.gname
+            })
+        return {'joined_groups': response_data}, 200
+
+    @jwt_required
+    def post(self):
+        _parser = reqparse.RequestParser()
+        _parser.add_argument('groupname',
+                             type=str,
+                             required=True,
+                             help="This field cannot be blank."
+                             )
+
+        args = _parser.parse_args()
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(id=current_user).first()
+        group = UserGroup.query.filter_by(gname=args['groupname']).first()
+        user_group_member = UserGroupMember()
+        user_group_member.group = group
+        user_group_member.user = user
+        db.session.add(user_group_member)
+        db.session.commit()
+
+        return {'message': 'group %s add member %s' % (
+            group.gname, user.username)}, 201
+
+
 class UserChatLogAPI(Resource):
     def get(self):
         pass
 
+    @jwt_required
     def post(self):
         _parser = reqparse.RequestParser()
         _parser.add_argument('from_user',
@@ -140,7 +203,6 @@ class UserChatLogAPI(Resource):
                              help="This field cannot be blank."
                              )
         args = _parser.parse_args()
-        args = _usergroup_parser.parse_args()
         user_group = UserGroup()
         user_group.group_name = args['groupname']
         db.session.add(user_group)
@@ -152,6 +214,7 @@ def test_connect():
     emit('connect', {'data': 'Connected'})
 
 
+@jwt_required
 @socketio.on('user_chat_log')
 def handle_message(username):
     user = User.query.filter_by(username=username).first()
@@ -188,7 +251,6 @@ def group_chat_log(gname):
     emit("on_response", response_data, broadcast=True)
 
 
-@jwt_required
 @socketio.on('user_chat_dialog')
 def user_chat_dialog(contact, current_user):
     contact = User.query.filter_by(username=contact).first()
@@ -210,16 +272,14 @@ def user_chat_dialog(contact, current_user):
                 'display_time': datetime_format(dialog.create_time)
             }
             response_data.append(data)
-    room = get_jwt_identity()
+    room = current_user.id
     join_room(room)
     emit("on_response", response_data, room=room)
 
-
-@jwt_required
 @socketio.on('group_chat_dialog')
 def group_chat_dialog(gname):
     group = UserGroup.query.filter_by(gname=gname).first()
-    dialogs = UserGroupChatLog.query.filter_by(group=group)
+    dialogs = UserGroupChatLog.query.filter_by(group=group).order_by(UserGroupChatLog.create_time)
     response_data = []
     if dialogs:
         for dialog in dialogs:
@@ -235,7 +295,6 @@ def group_chat_dialog(gname):
     emit("on_response", response_data, room=room)
 
 
-@jwt_required
 @socketio.on('send_user_message')
 def handle_user_message(from_username, to_username, message):
     from_user = User.query.filter_by(username=from_username).first()
@@ -246,7 +305,7 @@ def handle_user_message(from_username, to_username, message):
         message=message)
     db.session.add(chatlog)
     db.session.commit()
-    room = get_jwt_identity()
+    room = from_user.id
     data = {
         'from_user': chatlog.from_user.username,
         'to_user': chatlog.to_user.username,
@@ -257,7 +316,6 @@ def handle_user_message(from_username, to_username, message):
     emit("user_message", data, room=room)
 
 
-@jwt_required
 @socketio.on('send_group_message')
 def handle_group_message(username, gname, message=None):
     user = User.query.filter_by(username=username).first()
@@ -279,6 +337,37 @@ def handle_group_message(username, gname, message=None):
     emit("group_message", data, room=room)
 
 
+@socketio.on('search')
+def handle_search(username, search_value, search_type):
+    print(username)
+    current_user = User.query.filter_by(username=username).first()
+    response_data = []
+    if search_type == 'friend':
+        users = User.query.filter(User.username.contains(search_value))
+        if users:
+            for user in users:
+                if current_user.id < user.id:
+                    friend = Friend.query.filter_by(
+                        user=current_user, friend=user).first()
+                else:
+                    friend = Friend.query.filter_by(
+                        user=user, friend=current_user).first()
+                if not friend:
+                    response_data.append({
+                        'username': user.username
+                    })
+
+    elif search_type == 'group':
+        groups = UserGroup.query.filter(UserGroup.gname.contains(search_value))
+        if groups:
+            for group in groups:
+                response_data.append({
+                    'gname': group.gname
+                })
+
+    emit('search_result', response_data)
+
+
 @socketio.on('disconnect')
 def test_disconnect():
     print('Client disconnected')
@@ -294,3 +383,5 @@ api.add_resource(Login, '/login', endpoint='login')
 api.add_resource(Logout, '/logout', endpoint='logout')
 api.add_resource(UserGroupAPI, '/group', endpoint='group')
 api.add_resource(FriendAPI, '/friend', endpoint='friend')
+api.add_resource(UserGroupMemberAPI, '/groupmember', endpoint='groupmemeber')
+api.add_resource(UserGroupMemberAPI, '/joinedgroup', endpoint='groupjoined')
