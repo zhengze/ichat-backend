@@ -1,7 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
 from flask_script import Manager, Server
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_socketio import SocketIO, emit, send
 from dotenv import load_dotenv

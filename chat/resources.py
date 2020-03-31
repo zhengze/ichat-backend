@@ -276,10 +276,13 @@ def user_chat_dialog(contact, current_user):
     join_room(room)
     emit("on_response", response_data, room=room)
 
+
 @socketio.on('group_chat_dialog')
 def group_chat_dialog(gname):
     group = UserGroup.query.filter_by(gname=gname).first()
-    dialogs = UserGroupChatLog.query.filter_by(group=group).order_by(UserGroupChatLog.create_time)
+    dialogs = UserGroupChatLog.query.filter_by(
+        group=group).order_by(
+        UserGroupChatLog.create_time)
     response_data = []
     if dialogs:
         for dialog in dialogs:

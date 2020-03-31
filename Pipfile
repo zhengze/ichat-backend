@@ -7,6 +7,8 @@ verify_ssl = true
 autopep8 = "*"
 pytest = "*"
 websocket-client = "*"
+coverage = "*"
+pylint = "*"
 
 [packages]
 flask = "*"
