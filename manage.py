@@ -1,7 +1,7 @@
 import os
 import flask
 from flask_script import Manager, Server, Shell
-from flask_migrate import Migrate
+from flask_migrate import Migrate, MigrateCommand
 from dotenv import load_dotenv, find_dotenv
 from chat import create_app, db, models
 from chat.resources import socketio
@@ -19,6 +19,7 @@ server = Server(host=RUN_HOST, port=RUN_PORT)
 #manager.add_command('runserver', server)
 #server = socketio.run(app=app, host=RUN_HOST, port=RUN_PORT)
 manager.add_command('runserver', server)
+manager.add_command('db', MigrateCommand)
 
 
 @app.shell_context_processor
