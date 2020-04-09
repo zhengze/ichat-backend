@@ -8,7 +8,6 @@ from flask_jwt_extended import (
     jwt_refresh_token_required, create_refresh_token,
     get_jwt_identity
 )
-import json
 from .database import db
 from .models import User, UserGroup, UserChatLog, UserGroupChatLog, Friend, UserGroupMember
 from .utils import datetime_format, datetime2timestamp

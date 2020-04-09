@@ -1,11 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
-from flask_script import Manager, Server
-from flask_migrate import Migrate
 from flask_socketio import SocketIO, emit, send
-from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
-from flask_sqlalchemy import SQLAlchemy
 from config import config
 from .database import db
 from .resources import chat_bp, socketio
