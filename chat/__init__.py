@@ -1,6 +1,5 @@
 from flask import Flask
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, send
 from flask_jwt_extended import JWTManager
 from config import config
 from .database import db

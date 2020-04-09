@@ -26,7 +26,9 @@ manager.add_command('db', MigrateCommand)
 def make_shell_context():
     return dict(app=app, db=db, models=models)
 
+
 manager.add_command("shell", Shell(make_context=make_shell_context))
+
 
 @manager.command
 def run():
