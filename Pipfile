@@ -21,6 +21,7 @@ python-dotenv = "*"
 flask-migrate = "*"
 flask-jwt-extended = "*"
 pymysql = "*"
+cryptography = "*"
 
 [requires]
 python_version = "3.6"
